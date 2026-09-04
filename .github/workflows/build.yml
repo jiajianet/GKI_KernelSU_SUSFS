@@ -366,7 +366,7 @@ jobs:
           ABK_FEATURE_FAILURE_MESSAGE: "ZRAM configuration failed"
       run: |
           CONFIG_FILE=$GITHUB_WORKSPACE/kernel/common/arch/arm64/configs/gki_defconfig
-
+          ZZH_PATCHES=../../ABK
           set_config_value() {
             local symbol="$1"
             local value="$2"
