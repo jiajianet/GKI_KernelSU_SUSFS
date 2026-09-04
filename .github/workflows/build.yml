@@ -317,11 +317,12 @@ jobs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
             echo "准备补丁资源..."
-            cd ../../../
+            cd ../../
             ls
             ls ../
             git clone https://github.com/ShirkNeko/SukiSU_patch.git
-            ZZH_PATCHES=$PWD
+            git clone https://github.com/jiajianet/ABK.git
+            ZZH_PATCHES=ABK
             SUKISU_PATCHES=SukiSU_patch
             echo "升级 LZ4..."
             rm -f lib/lz4/lz4_compress.c lib/lz4/lz4_decompress.c lib/lz4/lz4defs.h lib/lz4/lz4hc_compress.c
