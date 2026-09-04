@@ -354,10 +354,6 @@ jobs:
               fi
             done
 
-            chmod +x "$ZZH_PATCHES/zram/setup_zstdp.sh"
-            ABK_ZSTDP_UPSTREAM_TAG="v6.15" \
-            bash "$ZZH_PATCHES/zram/setup_zstdp.sh" integrate "$PWD"
-
     - name: 配置 ZRAM 选项
       env:
           BASH_ENV: ''
@@ -478,8 +474,8 @@ jobs:
             enable_legacy_full_algos
           fi
           # ---- 自定义单独算法 ----
-          echo "添加自定义 ZRAM 算法: lzo,lz4,lz4hc,deflate,842,zstd,zstdp"
-          IFS=',' read -ra ALGOS <<< "lzo,lz4,lz4hc,deflate,842,zstd,zstdp"
+          echo "添加自定义 ZRAM 算法: lzo,lz4,lz4hc,deflate,842,zstd"
+          IFS=',' read -ra ALGOS <<< "lzo,lz4,lz4hc,deflate,842,zstd"
           for raw_algo in "${ALGOS[@]}"; do
             algo=$(echo "$raw_algo" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
             if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
