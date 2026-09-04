@@ -446,8 +446,8 @@ jobs:
             set_config_value CONFIG_MODULE_SIG n
           fi
 
-          set_config_value CONFIG_ZSMALLOC y
-          set_config_value CONFIG_ZRAM y
+          set_config_value CONFIG_ZSMALLOC m
+          set_config_value CONFIG_ZRAM m
 
           if [ -f "$KERNEL_ROOT/common/modules.bzl" ]; then
             sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "$KERNEL_ROOT/common/modules.bzl"
