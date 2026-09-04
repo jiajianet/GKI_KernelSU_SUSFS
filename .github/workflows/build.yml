@@ -317,7 +317,7 @@ jobs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
             echo "准备补丁资源..."
-            cd ../../
+            cd ../../../
             ls
             ls ../
             git clone https://github.com/ShirkNeko/SukiSU_patch.git
