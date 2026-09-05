@@ -62,3 +62,5 @@ runs:
       with:
         config_list: |
           CONFIG_TCP_CONG_BBR3=y
+          CONFIG_DEFAULT_BBR3=y
+          CONFIG_DEFAULT_TCP_CONG="bbr3"
