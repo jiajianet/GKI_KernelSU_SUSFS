@@ -16,6 +16,8 @@ runs:
     shell: bash
     working-directory: ${{ github.workspace }}/kernel
     run: |
+      # 清空模块列表检查文件，因为 ZSMALLOC 和 ZRAM 已内置
+      echo -n > common/android/gki_aarch64_modules
       sed -i 's/check_defconfig//' ./common/build.config.gki
       if [ -f "build/build.sh" ]; then
         BUILD_GKI_ARTIFACTS="" \
