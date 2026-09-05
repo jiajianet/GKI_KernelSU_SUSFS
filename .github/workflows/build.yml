@@ -308,7 +308,7 @@ jobs:
       with:
         kernel_version: ${{ inputs.kernel_version }}
 
-    - name: 配置 ZRAM 补丁栈
+    - name: Config ZRAM patch stack
       env:
           BASH_ENV: ''
           ABK_FEATURE_ID: zram
@@ -354,7 +354,7 @@ jobs:
               fi
             done
 
-    - name: 配置 ZRAM 选项
+    - name: Update Kernel ZRAM config
       env:
           BASH_ENV: ''
           ABK_FEATURE_ID: zram
