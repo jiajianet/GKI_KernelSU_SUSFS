@@ -24,10 +24,6 @@ inputs:
     description: 'Selected root implementation (kernelsu / next / resukisu). KernelSU (tiann main) needs the 10_enable_susfs_for_ksu patch; other flavors already ship SUSFS.'
     required: false
     default: ""
-  nomount_enabled:
-    description: 'Set true when NoMount is integrated (disables SUSFS OPEN_REDIRECT to avoid overlapping hook overhead)'
-    required: false
-    default: "false"
 
 runs:
   using: "composite"
@@ -58,8 +54,6 @@ runs:
 
     - name: Enable SUSFS Kernel Configs
       uses: ./.github/actions/susfs-config
-      with:
-        nomount_enabled: ${{ inputs.nomount_enabled }}
 
     - name: Apply SUSFS Patches
       uses: ./.github/actions/susfs-patches
