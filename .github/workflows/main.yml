@@ -61,6 +61,9 @@ on:
           - KernelSU-Next
           - KernelSU
           - ReSukiSU
+          - SukiSU-Ultra
+          - KowSU
+          - No Root
           - All
         default: All
       use_susfs:
@@ -132,8 +135,17 @@ jobs:
       susfs_commit_android14_6_1_resukisu: ${{ steps.resolve.outputs.susfs_commit_android14_6_1_resukisu }}
       susfs_commit_android15_6_6_resukisu: ${{ steps.resolve.outputs.susfs_commit_android15_6_6_resukisu }}
       susfs_commit_android16_6_12_resukisu: ${{ steps.resolve.outputs.susfs_commit_android16_6_12_resukisu }}
+      susfs_commit_android12_5_10_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android12_5_10_sukisu_ultra }}
+      susfs_commit_android13_5_10_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android13_5_10_sukisu_ultra }}
+      susfs_commit_android13_5_15_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android13_5_15_sukisu_ultra }}
+      susfs_commit_android14_5_15_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android14_5_15_sukisu_ultra }}
+      susfs_commit_android14_6_1_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android14_6_1_sukisu_ultra }}
+      susfs_commit_android15_6_6_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android15_6_6_sukisu_ultra }}
+      susfs_commit_android16_6_12_sukisu_ultra: ${{ steps.resolve.outputs.susfs_commit_android16_6_12_sukisu_ultra }}
       ksu_commit: ${{ steps.resolve.outputs.ksu_commit }}
       resukisu_commit: ${{ steps.resolve.outputs.resukisu_commit }}
+      sukisu_ultra_commit: ${{ steps.resolve.outputs.sukisu_ultra_commit }}
+      kowsu_commit: ${{ steps.resolve.outputs.kowsu_commit }}
       kernel_patches_commit: ${{ steps.resolve.outputs.kernel_patches_commit }}
       anykernel3_commit: ${{ steps.resolve.outputs.anykernel3_commit }}
       droidspaces_commit: ${{ steps.resolve.outputs.droidspaces_commit }}
@@ -179,6 +191,7 @@ jobs:
           PIN_NOMOUNT="d0f57d5c37ff02aae2299daded57919153240cb3"
           PIN_KERNELSU="3c1240625655978f319a98398031100b80e9da7c"
           PIN_RESUKISU="3c1882886dbbb54f4aae7ddf205f8ccde32c2a34"
+          PIN_SUKISU_ULTRA="e2912817f4e1b194e582a06e0b5eacf6a3fb7083"
           declare -A PIN_SUSFS=(
             [susfs_commit_android12_5_10]="ec785f47d49f7b3871ca9356f450411020af7017"
             [susfs_commit_android13_5_10]="ed3d6d9c9a2652e1c70f153f5358701e996d646c"
@@ -191,6 +204,16 @@ jobs:
           # ReSukiSU keeps its own SUSFS pin set (currently the shared values,
           # including 6.1 = 0ff93279). KernelSU's set above already diverges on 6.1.
           declare -A PIN_SUSFS_RESUKISU=(
+            [susfs_commit_android12_5_10]="ec785f47d49f7b3871ca9356f450411020af7017"
+            [susfs_commit_android13_5_10]="ed3d6d9c9a2652e1c70f153f5358701e996d646c"
+            [susfs_commit_android13_5_15]="bca0d2333c1a7d717e7278b019d7af7ba1d16005"
+            [susfs_commit_android14_5_15]="d54b51724afa912c4c99bb99731354ce934d1889"
+            [susfs_commit_android14_6_1]="4fc9c1898ea66f51847cdbc0d1473ea4ef525a70"
+            [susfs_commit_android15_6_6]="937215cb3a1b1f333d764c366c7a49972fa8e7a0"
+            [susfs_commit_android16_6_12]="7d91da2d2ce056d1abf378d9199aaf1072d37ab0"
+          )
+          # SukiSU-Ultra keeps its own SUSFS pin set too (same starting values).
+          declare -A PIN_SUSFS_SUKISU_ULTRA=(
             [susfs_commit_android12_5_10]="ec785f47d49f7b3871ca9356f450411020af7017"
             [susfs_commit_android13_5_10]="ed3d6d9c9a2652e1c70f153f5358701e996d646c"
             [susfs_commit_android13_5_15]="bca0d2333c1a7d717e7278b019d7af7ba1d16005"
@@ -219,16 +242,32 @@ jobs:
           echo "kernelsu_branch=dev" >> "$GITHUB_OUTPUT"
 
           # Selected root implementation(s). Maps the human-facing choice
-          # (KernelSU-Next / KernelSU / ReSukiSU / All) to internal root-setup
-          # flavors (next / kernelsu / resukisu). Every build always has a root;
-          # 'All' emits a matrix of all three root flavors plus each pinned commit.
+          # (KernelSU-Next / KernelSU / ReSukiSU / SukiSU-Ultra / KowSU /
+          # No Root / All) to internal root-setup flavors (next / kernelsu /
+          # resukisu / sukisu-ultra / kowsu / none). 'All' emits a matrix of
+          # the three core root flavors plus each pinned commit; SukiSU-Ultra,
+          # KowSU, and No Root are opt-in only and never part of 'All'.
           #
-          # kernelsu and resukisu pin in verified mode; KernelSU-Next (next) always
-          # builds at latest.
-          KERNELSU_COMMIT="$(pick "$PIN_KERNELSU" https://github.com/tiann/KernelSU.git refs/heads/main)"
-          RESUKISU_COMMIT="$(pick "$PIN_RESUKISU" https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main)"
+          # kernelsu, resukisu, and sukisu-ultra pin in verified mode;
+          # KernelSU-Next (next) always builds at latest.
+          # With SUSFS off, every root tracks latest instead of pins:
+          # SukiSU-Ultra follows main (builtin only matters for SUSFS builds).
+          if [ "${{ inputs.use_susfs }}" = "true" ]; then
+            KERNELSU_COMMIT="$(pick "$PIN_KERNELSU" https://github.com/tiann/KernelSU.git refs/heads/main)"
+            RESUKISU_COMMIT="$(pick "$PIN_RESUKISU" https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main)"
+            SUKISU_ULTRA_COMMIT="$(pick "$PIN_SUKISU_ULTRA" https://github.com/SukiSU-Ultra/SukiSU-Ultra.git refs/heads/builtin)"
+          else
+            KERNELSU_COMMIT="$(resolve_sha https://github.com/tiann/KernelSU.git refs/heads/main)"
+            RESUKISU_COMMIT="$(resolve_sha https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main)"
+            SUKISU_ULTRA_COMMIT="$(resolve_sha https://github.com/SukiSU-Ultra/SukiSU-Ultra.git refs/heads/main)"
+          fi
           emit ksu_commit "$KERNELSU_COMMIT"
           emit resukisu_commit "$RESUKISU_COMMIT"
+          emit sukisu_ultra_commit "$SUKISU_ULTRA_COMMIT"
+          # KowSU has no SUSFS support, so it always tracks latest on master
+          # (it can only ever run with SUSFS off — enforced below).
+          KOWSU_COMMIT="$(resolve_sha https://github.com/KOWX712/KernelSU.git refs/heads/master)"
+          emit kowsu_commit "$KOWSU_COMMIT"
           if [ "${{ inputs.use_susfs }}" = "true" ]; then
             NEXT_COMMIT="$(resolve_sha https://github.com/pershoot/KernelSU-Next.git refs/heads/dev-susfs)"
           else
@@ -254,6 +293,25 @@ jobs:
               echo "root_flavor=resukisu" >> "$GITHUB_OUTPUT"
               emit root_commit "$RESUKISU_COMMIT"
               ROOT_MATRIX="[$(mk_entry resukisu ReSukiSU "$RESUKISU_COMMIT")]"
+              ;;
+            SukiSU-Ultra)
+              echo "root_flavor=sukisu-ultra" >> "$GITHUB_OUTPUT"
+              emit root_commit "$SUKISU_ULTRA_COMMIT"
+              ROOT_MATRIX="[$(mk_entry sukisu-ultra SukiSU-Ultra "$SUKISU_ULTRA_COMMIT")]"
+              ;;
+            KowSU)
+              if [ "${{ inputs.use_susfs }}" = "true" ]; then
+                echo "ERROR: KowSU does not work together with SUSFS — re-run with SUSFS off." >&2
+                exit 1
+              fi
+              echo "root_flavor=kowsu" >> "$GITHUB_OUTPUT"
+              emit root_commit "$KOWSU_COMMIT"
+              ROOT_MATRIX="[$(mk_entry kowsu KowSU "$KOWSU_COMMIT")]"
+              ;;
+            "No Root")
+              echo "root_flavor=none" >> "$GITHUB_OUTPUT"
+              echo "root_commit=" >> "$GITHUB_OUTPUT"
+              ROOT_MATRIX='[{"root_flavor":"none","variant":"NoRoot","root_commit":""}]'
               ;;
             All)
               # Fan out to all three root variants, each with its pinned commit.
@@ -284,6 +342,8 @@ jobs:
             emit "$key" "$(pick "${PIN_SUSFS[$key]}" https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/${SUSFS_BRANCHES[$key]})"
             # Per-flavor ReSukiSU SUSFS pin (same branch, own pin set).
             emit "${key}_resukisu" "$(pick "${PIN_SUSFS_RESUKISU[$key]}" https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/${SUSFS_BRANCHES[$key]})"
+            # Per-flavor SukiSU-Ultra SUSFS pin (same branch, own pin set).
+            emit "${key}_sukisu_ultra" "$(pick "${PIN_SUSFS_SUKISU_ULTRA[$key]}" https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/${SUSFS_BRANCHES[$key]})"
           done
 
           # Tracked build helpers (resolved automatically, before the run)
@@ -297,13 +357,18 @@ jobs:
       - name: Resolve manager builds for selected root flavor(s)
         id: manager
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
+          # Credit: authenticated gh-API manager lookup adapted from EmberHeart-Kernels
+          # commit ae9a341 (nullptr-t-oss/composite_actions fetch_ksu_manager).
           # Each selected root must ship ALL manager APK builds. KernelSU-Next publishes
           # its manager APKs (manager + manager-spoofed) from the official dev-tip
-          # build-manager-ci run; kernelsu (KernelSU) and ReSukiSU expose theirs as
-          # CI-run artifacts. All three are pinned to an exact commit.
+          # build-manager-ci run; kernelsu (KernelSU), ReSukiSU, SukiSU-Ultra,
+          # and KowSU expose theirs as CI-run artifacts. All are pinned to an exact commit.
+          # No Root ships no manager.
           resolve_one() { # flavor
             local flavor="$1"
             local owner repo wf stock
@@ -312,13 +377,11 @@ jobs:
                 owner="KernelSU-Next"; repo="KernelSU-Next"; wf="build-manager-ci.yml"
                 # Manager is built from the official dev-tip commit (grabbed at run start).
                 stock="${{ steps.resolve.outputs.kernelsu_commit }}"
-                run_id=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                  -H "Authorization: Bearer ${{ github.token }}" \
-                  "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
-                  | jq -r '.workflow_runs[0].id // empty')
+                run_id=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
+                  --jq '.workflow_runs[0].id // empty')
                 if [[ -z "${run_id}" ]]; then
                   echo "No manager build for dev tip ${stock}, falling back to latest successful run" >&2
-                  fb=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -H "Authorization: Bearer ${{ github.token }}" "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=dev&status=success&per_page=1")
+                  fb=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=dev&status=success&per_page=1")
                   run_id=$(echo "$fb" | jq -r '.workflow_runs[0].id // empty')
                   stock=$(echo "$fb" | jq -r '.workflow_runs[0].head_sha // empty')
                   if [[ -n "$run_id" ]]; then echo "Fallback to ${stock} run ${run_id}" >&2; fi
@@ -334,12 +397,11 @@ jobs:
               kernelsu)
                 owner="tiann"; repo="KernelSU"; wf="build-manager.yml"
                 stock=$(git ls-remote https://github.com/tiann/KernelSU.git refs/heads/main | awk '{print $1; exit}')
-                run_id=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                  "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
-                  | jq -r '.workflow_runs[0].id // empty')
+                run_id=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
+                  --jq '.workflow_runs[0].id // empty')
                 if [[ -z "${run_id}" ]]; then
                   echo "No manager build for stock ${stock}, falling back to latest successful run" >&2
-                  fb=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=main&status=success&per_page=1")
+                  fb=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=main&status=success&per_page=1")
                   run_id=$(echo "$fb" | jq -r '.workflow_runs[0].id // empty')
                   stock=$(echo "$fb" | jq -r '.workflow_runs[0].head_sha // empty')
                   if [[ -n "$run_id" ]]; then echo "Fallback to ${stock} run ${run_id}" >&2; fi
@@ -354,12 +416,11 @@ jobs:
               resukisu)
                 owner="ReSukiSU"; repo="ReSukiSU"; wf="build-manager.yml"
                 stock=$(git ls-remote https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main | awk '{print $1; exit}')
-                run_id=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-                  "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
-                  | jq -r '.workflow_runs[0].id // empty')
+                run_id=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
+                  --jq '.workflow_runs[0].id // empty')
                 if [[ -z "${run_id}" ]]; then
                   echo "No manager build for stock ${stock}, falling back to latest successful run" >&2
-                  fb=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=main&status=success&per_page=1")
+                  fb=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=main&status=success&per_page=1")
                   run_id=$(echo "$fb" | jq -r '.workflow_runs[0].id // empty')
                   stock=$(echo "$fb" | jq -r '.workflow_runs[0].head_sha // empty')
                   if [[ -n "$run_id" ]]; then echo "Fallback to ${stock} run ${run_id}" >&2; fi
@@ -369,6 +430,44 @@ jobs:
                   fi
                 fi
                 printf '{"flavor":"%s","owner":"%s","repo":"%s","source":"run","run_id":%s,"stock":"%s","want":"Manager-release,Spoofed-Manager-release"}' \
+                  "$flavor" "$owner" "$repo" "$run_id" "$stock"
+                ;;
+              sukisu-ultra)
+                owner="SukiSU-Ultra"; repo="SukiSU-Ultra"; wf="build-manager.yml"
+                stock=$(git ls-remote https://github.com/SukiSU-Ultra/SukiSU-Ultra.git refs/heads/main | awk '{print $1; exit}')
+                run_id=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
+                  --jq '.workflow_runs[0].id // empty')
+                if [[ -z "${run_id}" ]]; then
+                  echo "No manager build for stock ${stock}, falling back to latest successful run" >&2
+                  fb=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=main&status=success&per_page=1")
+                  run_id=$(echo "$fb" | jq -r '.workflow_runs[0].id // empty')
+                  stock=$(echo "$fb" | jq -r '.workflow_runs[0].head_sha // empty')
+                  if [[ -n "$run_id" ]]; then echo "Fallback to ${stock} run ${run_id}" >&2; fi
+                  if [[ -z "${run_id}" ]]; then
+                    echo "ERROR: no ${repo} manager build exists for stock commit ${stock}" >&2
+                    exit 1
+                  fi
+                fi
+                printf '{"flavor":"%s","owner":"%s","repo":"%s","source":"run","run_id":%s,"stock":"%s","want":"Manager,Spoofed-Manager"}' \
+                  "$flavor" "$owner" "$repo" "$run_id" "$stock"
+                ;;
+              kowsu)
+                owner="KOWX712"; repo="KernelSU"; wf="build-manager.yml"
+                stock=$(git ls-remote https://github.com/KOWX712/KernelSU.git refs/heads/master | awk '{print $1; exit}')
+                run_id=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?head_sha=${stock}" \
+                  --jq '.workflow_runs[0].id // empty')
+                if [[ -z "${run_id}" ]]; then
+                  echo "No manager build for stock ${stock}, falling back to latest successful run" >&2
+                  fb=$(gh api "repos/${owner}/${repo}/actions/workflows/${wf}/runs?branch=master&status=success&per_page=1")
+                  run_id=$(echo "$fb" | jq -r '.workflow_runs[0].id // empty')
+                  stock=$(echo "$fb" | jq -r '.workflow_runs[0].head_sha // empty')
+                  if [[ -n "$run_id" ]]; then echo "Fallback to ${stock} run ${run_id}" >&2; fi
+                  if [[ -z "${run_id}" ]]; then
+                    echo "ERROR: no ${repo} manager build exists for stock commit ${stock}" >&2
+                    exit 1
+                  fi
+                fi
+                printf '{"flavor":"%s","owner":"%s","repo":"%s","source":"run","run_id":%s,"stock":"%s","want":"manager"}' \
                   "$flavor" "$owner" "$repo" "$run_id" "$stock"
                 ;;
               *)
@@ -386,6 +485,8 @@ jobs:
             KernelSU-Next) LIST=$(jq -c -n '[inputs]' <<< "$(resolve_one next)") ;;
             KernelSU) LIST=$(jq -c -n '[inputs]' <<< "$(resolve_one kernelsu)") ;;
             ReSukiSU) LIST=$(jq -c -n '[inputs]' <<< "$(resolve_one resukisu)") ;;
+            SukiSU-Ultra) LIST=$(jq -c -n '[inputs]' <<< "$(resolve_one sukisu-ultra)") ;;
+            KowSU) LIST=$(jq -c -n '[inputs]' <<< "$(resolve_one kowsu)") ;;
             *) echo "Skipping manager resolution (no root flavor / none)." ;;
           esac
           if [ -n "$LIST" ]; then
@@ -401,13 +502,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Every build always has a root implementation (no 'none' option), so
-          # SUSFS always has a root to hook into -- no extra guard needed.
+          # Root is optional now ('No Root' builds ship no root implementation),
+          # so SUSFS on a No Root build applies kernel-side only.
 
           # A Release/Pre-Release ships whichever manger build(s) were resolved
           # in the manager step above (exact match per root flavor). No root
           # restriction applies here anymore -- KernelSU-Next, KernelSU, ReSukiSU,
-          # or 'All' are all valid release targets.
+          # SukiSU-Ultra, KowSU, or 'All' are all valid release targets ('No Root'
+          # ships no manager).
 
           FEATURES=""
           [ "${{ inputs.use_susfs }}" = "true" ] && FEATURES="${FEATURES}SUSFS+"
@@ -476,6 +578,7 @@ jobs:
               cd "$DLDIR"
               if [ "$SRC" = "release" ]; then
                 curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+                  -H "Authorization: Bearer ***" \
                   "https://api.github.com/repos/${OWNER}/${REPO}/releases/latest" > rel.json
                 for URL in $(jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' rel.json); do
                   NAME="${URL##*/}"
@@ -626,7 +729,7 @@ jobs:
     with:
       config_file: .github/config/android12-5.10.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android12_5_10_resukisu || needs.resolve-sources.outputs.susfs_commit_android12_5_10 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android12_5_10_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android12_5_10_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android12_5_10) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -655,7 +758,7 @@ jobs:
     with:
       config_file: .github/config/android13-5.10.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android13_5_10_resukisu || needs.resolve-sources.outputs.susfs_commit_android13_5_10 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android13_5_10_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android13_5_10_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android13_5_10) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -684,7 +787,7 @@ jobs:
     with:
       config_file: .github/config/android13-5.15.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android13_5_15_resukisu || needs.resolve-sources.outputs.susfs_commit_android13_5_15 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android13_5_15_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android13_5_15_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android13_5_15) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -713,7 +816,7 @@ jobs:
     with:
       config_file: .github/config/android14-5.15.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android14_5_15_resukisu || needs.resolve-sources.outputs.susfs_commit_android14_5_15 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android14_5_15_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android14_5_15_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android14_5_15) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -742,7 +845,7 @@ jobs:
     with:
       config_file: .github/config/android14-6.1.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android14_6_1_resukisu || needs.resolve-sources.outputs.susfs_commit_android14_6_1 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android14_6_1_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android14_6_1_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android14_6_1) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -771,7 +874,7 @@ jobs:
     with:
       config_file: .github/config/android15-6.6.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android15_6_6_resukisu || needs.resolve-sources.outputs.susfs_commit_android15_6_6 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android15_6_6_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android15_6_6_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android15_6_6) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -800,7 +903,7 @@ jobs:
     with:
       config_file: .github/config/android16-6.12.json
       feature_set: ${{ needs.resolve-sources.outputs.feature_set }}
-      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android16_6_12_resukisu || needs.resolve-sources.outputs.susfs_commit_android16_6_12 }}
+      susfs_commit: ${{ matrix.root.root_flavor == 'resukisu' && needs.resolve-sources.outputs.susfs_commit_android16_6_12_resukisu || (matrix.root.root_flavor == 'sukisu-ultra' && needs.resolve-sources.outputs.susfs_commit_android16_6_12_sukisu_ultra || needs.resolve-sources.outputs.susfs_commit_android16_6_12) }}
       nomount_commit: ${{ needs.resolve-sources.outputs.nomount_commit }}
       kernel_patches_commit: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
       root_flavor: ${{ matrix.root.root_flavor }}
@@ -851,9 +954,11 @@ jobs:
         NOMOUNT_SHA: ${{ needs.resolve-sources.outputs.nomount_commit }}
         KERNELSU_SHA: ${{ needs.resolve-sources.outputs.ksu_commit }}
         RESUKISU_SHA: ${{ needs.resolve-sources.outputs.resukisu_commit }}
+        SUKISU_ULTRA_SHA: ${{ needs.resolve-sources.outputs.sukisu_ultra_commit }}
         APPROVE_NOMOUNT: ${{ inputs.use_nomount }}
         APPROVE_KERNELSU: ${{ (inputs.root_flavor == 'KernelSU' || inputs.root_flavor == 'All') }}
         APPROVE_RESUKISU: ${{ (inputs.root_flavor == 'ReSukiSU' || inputs.root_flavor == 'All') }}
+        APPROVE_SUKISU_ULTRA: ${{ inputs.root_flavor == 'SukiSU-Ultra' }}
 
     - name: Commit promoted pins
       if: always() && steps.promote.conclusion == 'success'
@@ -1076,6 +1181,8 @@ jobs:
 
     - name: Extract KernelSU Version Info
       id: ksu_version
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
 
@@ -1130,7 +1237,7 @@ jobs:
         # Extract git tag at the sync point
         KSU_GIT_TAG=$(git describe --tags --abbrev=0 "$STOCK_COMMIT" 2>/dev/null || echo "no-tag")
 
-        MANAGER_RUN_ID=$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/actions/workflows/build-manager-ci.yml/runs?head_sha=${STOCK_COMMIT}" | jq -r '.workflow_runs[0].id // empty')
+        MANAGER_RUN_ID=$(gh api "repos/KernelSU-Next/KernelSU-Next/actions/workflows/build-manager-ci.yml/runs?head_sha=${STOCK_COMMIT}" --jq '.workflow_runs[0].id // empty')
         if [[ -n "${MANAGER_RUN_ID:-}" ]]; then
           KSU_MANAGER="https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/${MANAGER_RUN_ID}"
           KSU_MANAGER_NOTE="built from stock dev commit ${STOCK_COMMIT:0:12} (exact match)"
@@ -1425,6 +1532,8 @@ jobs:
           NOMOUNT_COMMIT: ${{ needs.resolve-sources.outputs.nomount_commit }}
           KSU_COMMIT: ${{ needs.resolve-sources.outputs.ksu_commit }}
           RESUKISU_COMMIT: ${{ needs.resolve-sources.outputs.resukisu_commit }}
+          SUKISU_ULTRA_COMMIT: ${{ needs.resolve-sources.outputs.sukisu_ultra_commit }}
+          KOWSU_COMMIT: ${{ needs.resolve-sources.outputs.kowsu_commit }}
           KERNELSU_COMMIT: ${{ needs.resolve-sources.outputs.kernelsu_commit }}
           KERNEL_PATCHES_COMMIT: ${{ needs.resolve-sources.outputs.kernel_patches_commit }}
           ANYKERNEL3_COMMIT: ${{ needs.resolve-sources.outputs.anykernel3_commit }}
@@ -1443,6 +1552,13 @@ jobs:
           SUSFS_ANDROID14_6_1_RESUKISU: ${{ needs.resolve-sources.outputs.susfs_commit_android14_6_1_resukisu }}
           SUSFS_ANDROID15_6_6_RESUKISU: ${{ needs.resolve-sources.outputs.susfs_commit_android15_6_6_resukisu }}
           SUSFS_ANDROID16_6_12_RESUKISU: ${{ needs.resolve-sources.outputs.susfs_commit_android16_6_12_resukisu }}
+          SUSFS_ANDROID12_5_10_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android12_5_10_sukisu_ultra }}
+          SUSFS_ANDROID13_5_10_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android13_5_10_sukisu_ultra }}
+          SUSFS_ANDROID13_5_15_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android13_5_15_sukisu_ultra }}
+          SUSFS_ANDROID14_5_15_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android14_5_15_sukisu_ultra }}
+          SUSFS_ANDROID14_6_1_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android14_6_1_sukisu_ultra }}
+          SUSFS_ANDROID15_6_6_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android15_6_6_sukisu_ultra }}
+          SUSFS_ANDROID16_6_12_SUKISU_ULTRA: ${{ needs.resolve-sources.outputs.susfs_commit_android16_6_12_sukisu_ultra }}
           # KSU version not computed here; render will show placeholder if release job skipped
         run: |
           set -e
@@ -1473,6 +1589,8 @@ jobs:
           ksun_commit=env("KSUN_COMMIT","")
           ksu_commit=env("KSU_COMMIT","")
           resukisu_commit=env("RESUKISU_COMMIT","")
+          sukisu_ultra_commit=env("SUKISU_ULTRA_COMMIT","")
+          kowsu_commit=env("KOWSU_COMMIT","")
           kernelsu_commit=env("KERNELSU_COMMIT","")
           nm=env("NOMOUNT_COMMIT","")
           kp=env("KERNEL_PATCHES_COMMIT","")
@@ -1485,12 +1603,12 @@ jobs:
               _next_url="https://github.com/pershoot/KernelSU-Next/commit/"
           else:
               _next_url="https://github.com/KernelSU-Next/KernelSU-Next/commit/"
-          _root_urls={"next":_next_url,"kernelsu":"https://github.com/tiann/KernelSU/commit/","resukisu":"https://github.com/ReSukiSU/ReSukiSU/commit/"}
-          _root_commits={"next":_rmatrix.get("next","") or kernelsu_commit,"kernelsu":_rmatrix.get("kernelsu","") or ksu_commit,"resukisu":_rmatrix.get("resukisu","") or resukisu_commit}
+          _root_urls={"next":_next_url,"kernelsu":"https://github.com/tiann/KernelSU/commit/","resukisu":"https://github.com/ReSukiSU/ReSukiSU/commit/","sukisu-ultra":"https://github.com/SukiSU-Ultra/SukiSU-Ultra/commit/","kowsu":"https://github.com/KOWX712/KernelSU/commit/"}
+          _root_commits={"next":_rmatrix.get("next","") or kernelsu_commit,"kernelsu":_rmatrix.get("kernelsu","") or ksu_commit,"resukisu":_rmatrix.get("resukisu","") or resukisu_commit,"sukisu-ultra":_rmatrix.get("sukisu-ultra","") or sukisu_ultra_commit,"kowsu":_rmatrix.get("kowsu","") or kowsu_commit}
           _flavors0=[m.get("flavor","") for m in parse_managers(env("MANAGER_LIST","")) if m.get("flavor","")]
           if not _flavors0:
-              _flavors0={"KernelSU-Next":["next"],"KernelSU":["kernelsu"],"ReSukiSU":["resukisu"],"All":["next","kernelsu","resukisu"]}.get(root,["next","kernelsu","resukisu"])
-          _labels0={"next":"KernelSU-Next","kernelsu":"KernelSU","resukisu":"ReSukiSU"}
+              _flavors0={"KernelSU-Next":["next"],"KernelSU":["kernelsu"],"ReSukiSU":["resukisu"],"SukiSU-Ultra":["sukisu-ultra"],"KowSU":["kowsu"],"No Root":[],"All":["next","kernelsu","resukisu"]}.get(root,["next","kernelsu","resukisu"])
+          _labels0={"next":"KernelSU-Next","kernelsu":"KernelSU","resukisu":"ReSukiSU","sukisu-ultra":"SukiSU-Ultra","kowsu":"KowSU"}
           _rc=[]
           for _fl0 in _flavors0:
               _c=_root_commits.get(_fl0,"")
@@ -1526,17 +1644,19 @@ jobs:
           variants=[_sel] if _sel else list(all_variants)
           sus_map={"android12-5.10":env("SUSFS_ANDROID12_5_10",""),"android13-5.10":env("SUSFS_ANDROID13_5_10",""),"android13-5.15":env("SUSFS_ANDROID13_5_15",""),"android14-5.15":env("SUSFS_ANDROID14_5_15",""),"android14-6.1":env("SUSFS_ANDROID14_6_1",""),"android15-6.6":env("SUSFS_ANDROID15_6_6",""),"android16-6.12":env("SUSFS_ANDROID16_6_12","")}
           sus_map_resukisu={"android12-5.10":env("SUSFS_ANDROID12_5_10_RESUKISU",""),"android13-5.10":env("SUSFS_ANDROID13_5_10_RESUKISU",""),"android13-5.15":env("SUSFS_ANDROID13_5_15_RESUKISU",""),"android14-5.15":env("SUSFS_ANDROID14_5_15_RESUKISU",""),"android14-6.1":env("SUSFS_ANDROID14_6_1_RESUKISU",""),"android15-6.6":env("SUSFS_ANDROID15_6_6_RESUKISU",""),"android16-6.12":env("SUSFS_ANDROID16_6_12_RESUKISU","")}
+          sus_map_sukisu_ultra={"android12-5.10":env("SUSFS_ANDROID12_5_10_SUKISU_ULTRA",""),"android13-5.10":env("SUSFS_ANDROID13_5_10_SUKISU_ULTRA",""),"android13-5.15":env("SUSFS_ANDROID13_5_15_SUKISU_ULTRA",""),"android14-5.15":env("SUSFS_ANDROID14_5_15_SUKISU_ULTRA",""),"android14-6.1":env("SUSFS_ANDROID14_6_1_SUKISU_ULTRA",""),"android15-6.6":env("SUSFS_ANDROID15_6_6_SUKISU_ULTRA",""),"android16-6.12":env("SUSFS_ANDROID16_6_12_SUKISU_ULTRA","")}
           _flavors=[m.get("flavor","") for m in parse_managers(env("MANAGER_LIST","")) if m.get("flavor","")]
           if not _flavors:
-              _flavors={"KernelSU-Next":["next"],"KernelSU":["kernelsu"],"ReSukiSU":["resukisu"],"All":["next","kernelsu","resukisu"]}.get(root,["next","kernelsu","resukisu"])
-          _labels={"next":"KernelSU-Next","kernelsu":"KernelSU","resukisu":"ReSukiSU"}
+              _flavors={"KernelSU-Next":["next"],"KernelSU":["kernelsu"],"ReSukiSU":["resukisu"],"SukiSU-Ultra":["sukisu-ultra"],"KowSU":["kowsu"],"No Root":[],"All":["next","kernelsu","resukisu"]}.get(root,["next","kernelsu","resukisu"])
+          _labels={"next":"KernelSU-Next","kernelsu":"KernelSU","resukisu":"ReSukiSU","sukisu-ultra":"SukiSU-Ultra","kowsu":"KowSU"}
           _susfs_url="https://gitlab.com/simonpunk/susfs4ksu"
           lines.append("| SUSFS branch |" + "".join(f" {_labels.get(_fl,_fl)} |" for _fl in _flavors))
           lines.append("|---" * (len(_flavors) + 1) + "|")
           for v in variants:
               _row=f"| gki-{v} |"
               for _fl in _flavors:
-                  _sm=sus_map_resukisu if _fl=="resukisu" else sus_map
+                  # KowSU never ships SUSFS: render n/a rather than shared pins.
+                  _sm={} if _fl=="kowsu" else (sus_map_sukisu_ultra if _fl=="sukisu-ultra" else (sus_map_resukisu if _fl=="resukisu" else sus_map))
                   sha=_sm.get(v,"")
                   sha_s=f"[`{sha[:7]}`]({_susfs_url}/-/commit/{sha})" if sha else "_n/a_"
                   _row+=f" {sha_s} |"

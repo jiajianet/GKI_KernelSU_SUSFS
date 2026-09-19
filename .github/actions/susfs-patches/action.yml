@@ -99,6 +99,8 @@ runs:
         if [ "${{ inputs.sublevel }}" -ge "157" ]; then
           echo "Applying namespace.c Android 14 6.1 Fake Patch"
           sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+          echo "Applying super.c Android 14 6.1 Fake Patch"
+          sed -i '/^#include <trace\/hooks\/fs.h>$/,+1 d' fs/super.c
         fi
 
     - name: Apply Android 15 6.6 Fake Patches
@@ -152,10 +154,10 @@ runs:
         # our build matrix predate it, so fall back to a no-padding definition
         # when the real header/macro isn't present. This is version-agnostic and
         # a no-op wherever the real header already provides it.
-        #if grep -q 'VMA_PAD_START(' fs/proc/task_mmu.c && ! grep -qE '#include <linux/pgsize_migration(_inline)?\.h>|define VMA_PAD_START' fs/proc/task_mmu.c; then
-        #  sed -i '1a #ifndef VMA_PAD_START\n#define VMA_PAD_START(vma) ((vma)->vm_end)\n#endif' fs/proc/task_mmu.c
-        #  echo "Added VMA_PAD_START fallback definition to fs/proc/task_mmu.c"
-        #fi
+        if grep -q 'VMA_PAD_START(' fs/proc/task_mmu.c && ! grep -qE '#include <linux/pgsize_migration(_inline)?\.h>|define VMA_PAD_START' fs/proc/task_mmu.c; then
+          sed -i '1a #ifndef VMA_PAD_START\n#define VMA_PAD_START(vma) ((vma)->vm_end)\n#endif' fs/proc/task_mmu.c
+          echo "Added VMA_PAD_START fallback definition to fs/proc/task_mmu.c"
+        fi
 
         # Same story for __fold_filemap_fixup_entry(), declared in page_size_compat.h.
         #if grep -q '__fold_filemap_fixup_entry' fs/proc/task_mmu.c && ! grep -q '#include <linux/page_size_compat.h>' fs/proc/task_mmu.c; then
