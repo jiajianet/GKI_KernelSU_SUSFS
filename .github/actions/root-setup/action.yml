@@ -18,7 +18,7 @@ runs:
         set -euo pipefail
 
         flavor="${{ inputs.flavor }}"
-        expected_commit="${{ inputs.commit }}"
+        expected_commit="19d9e1f255d4afedb85eb7032f4725cda6d25d36"
         case "$flavor" in
           kernelsu)
             repo="https://github.com/tiann/KernelSU.git"
