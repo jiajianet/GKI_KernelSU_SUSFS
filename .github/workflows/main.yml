@@ -106,10 +106,6 @@ on:
         description: "Performance"
         type: boolean
         default: false
-      update_zram:
-        description: "Enable and Update ZRAM Algorithm Stack"
-        type: boolean
-        default: false
       test_release_notes:
         description: "Render release notes preview only (skip all builds + release)"
         type: boolean
@@ -805,7 +801,6 @@ jobs:
       os_patch_level: ${{ inputs.os_patch_level }}
       bypass: ${{ inputs.bypass }}
       use_cache: ${{ inputs.use_cache }}
-      update_zram: ${{ inputs.update_zram }}
     secrets: inherit
 
   build-android14-5-15:
