@@ -72,6 +72,11 @@ on:
         required: false
         type: boolean
         default: true
+      update_zram:
+        description: "Enable and Update New ZRAM Algorithm Stack"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-gki:
@@ -352,6 +357,7 @@ jobs:
         kernel_version: ${{ inputs.kernel_version }}
 
     - name: Config ZRAM patch stack
+      if: inputs.update_zram
       env:
           BASH_ENV: ''
           ABK_FEATURE_ID: zram
@@ -398,6 +404,7 @@ jobs:
             done
 
     - name: Update Kernel ZRAM config
+      if: inputs.update_zram
       env:
           BASH_ENV: ''
           ABK_FEATURE_ID: zram
