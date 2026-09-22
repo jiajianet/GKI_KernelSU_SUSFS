@@ -142,13 +142,22 @@ runs:
 
         cd common
 
-        # repo sync used --depth=1, so the pinned SHA may not be present yet.
-        # Fetch it explicitly; try shallow first, fall back to full fetch if
-        # the remote refuses to serve an arbitrary shallow SHA.
-        echo "Fetching pinned kernel/common commit: $PIN"
-        if ! git fetch --depth=1 origin "$PIN" 2>/dev/null; then
-          echo "Shallow fetch of $PIN failed; retrying with full fetch..."
-          git fetch origin "$PIN"
+        # repo-managed repos do NOT have a remote named "origin" (the AOSP
+        # kernel manifest typically names it "aosp"/"googlesource"), so we
+        # bypass the remote-name lookup and fetch straight from the URL.
+        COMMON_URL="https://android.googlesource.com/kernel/common"
+
+        if git cat-file -e "${PIN}^{commit}" 2>/dev/null; then
+          echo "Pinned commit ${PIN} already present locally; skipping fetch."
+        else
+          echo "Fetching pinned kernel/common commit: ${PIN}"
+          # Shallow fetch is enough in the common case and much faster.
+          # Some servers refuse arbitrary-SHA shallow requests; fall back to
+          # a regular fetch of the same SHA in that case.
+          if ! git fetch --depth=1 "$COMMON_URL" "$PIN"; then
+            echo "Shallow fetch of ${PIN} failed; retrying with full fetch..."
+            git fetch "$COMMON_URL" "$PIN"
+          fi
         fi
 
         git checkout --detach "$PIN"
@@ -159,9 +168,6 @@ runs:
         fi
         echo "Pinned kernel/common to $PIN"
         echo "KERNEL_SOURCE_COMMIT_PINNED=$PIN" >> "$GITHUB_ENV"
-
-    # --- Non-repo steps (commented out; we only use repo now) ---
-    # ... （保持不变，省略） ...
 
     - name: Capture Kernel Common Commit Metadata
       shell: bash
