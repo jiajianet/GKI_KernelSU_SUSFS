@@ -50,11 +50,33 @@ runs:
         echo "SUSFS_COMMIT=$SUSFS_COMMIT" >> "$GITHUB_ENV"
         echo "Using SUSFS commit: $SUSFS_COMMIT"
 
-        # Pershoot's latest two gki-android14-6.1-dev commits (currently the
-        # no-features core build + Toolkit coexistence fixes) only apply to
-        # KernelSU-Next (dev-susfs fork). Other flavors use the simonpunk
-        # checkout as-is.
-        if [ "${{ inputs.root_flavor }}" = "next" ]; then
-          git fetch https://gitlab.com/pershoot/susfs4ksu.git gki-android14-6.1-dev || true
-          git log ..FETCH_HEAD --oneline -n 2 | awk '{print $1}' | tac | xargs git cherry-pick 2>/dev/null || true
+        # Pershoot 的补丁只针对 android14-6.1 + KernelSU-Next 组合，而且必须
+        # 干净应用。其它版本 / 其它 root 一律跳过；cherry-pick 失败立即中止，
+        # 绝不把带冲突标记的文件留给后续的 cp 步骤污染内核树。
+        if [ "${{ inputs.root_flavor }}" = "next" ] && [ "${{ inputs.version }}" = "android14-6.1" ]; then
+          PERSHOOT_REF="gki-android14-6.1-dev"
+          echo "Fetching pershoot SUSFS commits from ${PERSHOOT_REF}..."
+          if ! git fetch https://gitlab.com/pershoot/susfs4ksu.git "${PERSHOOT_REF}"; then
+            echo "::error::Failed to fetch pershoot ${PERSHOOT_REF}." >&2
+            exit 1
+          fi
+
+          # 先把要 cherry-pick 的 commit SHA 列出来（最早的在前），逐个应用。
+          mapfile -t PERSHOOT_COMMITS < <(
+            git log ..FETCH_HEAD --oneline -n 2 | awk '{print $1}' | tac
+          )
+          if [ "${#PERSHOOT_COMMITS[@]}" -eq 0 ]; then
+            echo "No new pershoot commits to cherry-pick; skipping."
+          else
+            for sha in "${PERSHOOT_COMMITS[@]}"; do
+              echo "Cherry-picking pershoot commit: ${sha}"
+              if ! git cherry-pick "${sha}"; then
+                echo "::error::cherry-pick of ${sha} failed; aborting to keep the tree clean." >&2
+                git cherry-pick --abort || true
+                exit 1
+              fi
+            done
+          fi
+        else
+          echo "Skipping pershoot cherry-pick for version=${{ inputs.version }} root_flavor=${{ inputs.root_flavor }}."
         fi
