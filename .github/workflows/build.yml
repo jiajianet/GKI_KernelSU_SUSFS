@@ -123,6 +123,8 @@ jobs:
         android_version: ${{ inputs.android_version }}
         kernel_version: ${{ inputs.kernel_version }}
         os_patch_level: ${{ inputs.os_patch_level }}
+        # 新增：固定 common kernel 源码 commit
+        kernel_source_commit: "7067896c5c0d3c8163406df3d05f4973989a73b5"
 
     - name: Set Build Timestamp from Kernel Commit
       shell: bash
