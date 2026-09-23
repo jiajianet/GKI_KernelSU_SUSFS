@@ -234,7 +234,7 @@ jobs:
         set -euo pipefail
         # 已知与当前 KernelSU-Next 树 API 对齐、构建通过的 SUSFS commit。
         # 之前用 git ls-remote 拉 gki-* 分支 tip，会随上游变动而破坏构建。
-        SUSFS_PINNED_COMMIT="bca0d2333c1a7d717e7278b019d7af7ba1d16005"
+        SUSFS_PINNED_COMMIT="ec785f47d49f7b3871ca9356f450411020af7017"
 
         if [ "${{ inputs.root_flavor }}" = "next" ]; then
           SUSFS_COMMIT="${SUSFS_PINNED_COMMIT}"
