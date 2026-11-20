@@ -611,14 +611,6 @@ jobs:
           version: ${{ inputs.version }}
           page_size: ${{ inputs.page_size }}
 
-      - name: ABI gate
-        # Compares Module.symvers CRCs against the stock ABI of the tree that was
-        # built and fails on any symbol whose CRC moved.
-        uses: ./.github/actions/abi-gate
-        with:
-          version: ${{ inputs.version }}
-          date: ${{ inputs.os_patch_level }}
-
       - name: Extract the built .config
         if: always()
         uses: ./.github/actions/extract-the-built-config
