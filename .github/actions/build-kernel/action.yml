@@ -53,6 +53,9 @@ runs:
       working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
+        # ==== 新增：清空模块列表检查文件 ====
+        echo -n > common/android/gki_aarch64_modules
+        # =================================
         if [ "${{ inputs.page_size }}" != "4k" ]; then
           echo "ERROR: page_size=${{ inputs.page_size }} is only supported by the Kleaf (Bazel) build; this tree uses build/build.sh." >&2
           exit 1
